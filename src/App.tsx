@@ -79,9 +79,9 @@ function App() {
     setLocalStream(localStream);
     setRemoteStream(remoteStream);
 
-    if (callButtonRef.current) callButtonRef.current.disabled = false;
-    if (answerButtonRef.current) answerButtonRef.current.disabled = false;
-    if (webcamButtonRef.current) webcamButtonRef.current.disabled = true;
+    // if (callButtonRef.current) callButtonRef.current.disabled = false;
+    // if (answerButtonRef.current) answerButtonRef.current.disabled = false;
+    // if (webcamButtonRef.current) webcamButtonRef.current.disabled = true;
   };
 
   const handleCallbuttonClick = async () => {
@@ -190,14 +190,14 @@ function App() {
         Start webcam
       </button>
       <h2>2. Create a new call</h2>
-      <button ref={callButtonRef} onClick={handleCallbuttonClick} disabled>
+      <button ref={callButtonRef} onClick={handleCallbuttonClick}>
         Create Call (offer)
       </button>
 
       <h2>3. Join a call</h2>
       <p>Answer the call from a different browser window or device</p>
       <input ref={callInputRef} />
-      <button ref={answerButtonRef} onClick={handleAnswerButtonClick} disabled>
+      <button ref={answerButtonRef} onClick={handleAnswerButtonClick}>
         Answer
       </button>
 
