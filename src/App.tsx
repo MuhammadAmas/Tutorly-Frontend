@@ -1,7 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import "./App.css";
 import { initializeApp } from "firebase/app";
-import "firebase/firestore";
+import "firebase/app";
 import {
   addDoc,
   collection,
@@ -25,8 +24,8 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const firestore = initializeApp(firebaseConfig);
-const database = getFirestore(firestore);
+const app = initializeApp(firebaseConfig);
+const database = getFirestore(app);
 
 const servers = {
   iceServers: [
@@ -86,58 +85,75 @@ function App() {
 
   const handleCallbuttonClick = async () => {
     console.log("here in call button");
-    const callDoc = doc(collection(database, "calls"));
-    const offerCandidates = collection(callDoc, "offerCandidates");
-    const answerCandidates = collection(callDoc, "answerCandidates");
+    try {
+      const callsCollection = collection(database, "calls");
+      const callDocRef = doc(callsCollection);
+      console.log(callDocRef);
+      const offerCandidates = collection(
+        database,
+        "calls",
+        callDocRef.id,
+        "offerCandidates"
+      );
+      const answerCandidates = collection(
+        callDocRef,
+        "calls",
+        callDocRef.id,
+        "answerCandidates"
+      );
 
-    callInputRef.current.value = callDoc.id;
-    console.log(callInputRef.current.value);
+      callInputRef.current.value = callDocRef.id;
+      console.log(callInputRef.current.value);
 
-    pc.onicecandidate = async (event) => {
-      if (event.candidate) {
-        await addDoc(offerCandidates, event.candidate.toJSON());
-      }
-    };
+      pc.onicecandidate = async (event) => {
+        if (event.candidate) {
+          await addDoc(offerCandidates, event.candidate.toJSON());
+        }
+      };
 
-    const offerDescription = await pc.createOffer();
-    await pc.setLocalDescription(offerDescription);
+      const offerDescription = await pc.createOffer();
+      await pc.setLocalDescription(offerDescription);
 
-    const offer = {
-      sdp: offerDescription.sdp,
-      type: offerDescription.type,
-    };
+      const offer = {
+        sdp: offerDescription.sdp,
+        type: offerDescription.type,
+      };
 
-    await setDoc(callDoc, { offer });
+      console.log("Offer being set in Firestore:", offer);
 
-    onSnapshot(callDoc, (snapshot) => {
-      const data = snapshot.data();
-      if (!pc.currentRemoteDescription && data?.answer) {
-        const answerDescription = new RTCSessionDescription(data.answer);
-        pc.setRemoteDescription(answerDescription);
-      }
-    });
+      await setDoc(callDocRef, { offer });
+      console.log("Offer successfully set in Firestore.");
 
-    // When answered, add candidate to peer connection
-    onSnapshot(answerCandidates, (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === "added") {
-          console.log("added");
-          const candidate = new RTCIceCandidate(change.doc.data());
-          pc.addIceCandidate(candidate);
+      onSnapshot(callDocRef, (snapshot) => {
+        const data = snapshot.data();
+        if (!pc.currentRemoteDescription && data?.answer) {
+          const answerDescription = new RTCSessionDescription(data.answer);
+          pc.setRemoteDescription(answerDescription);
         }
       });
-    });
-
-    if (hangupButtonRef.current) hangupButtonRef.current.disabled = false;
+      // When answered, add candidate to peer connection
+      onSnapshot(answerCandidates, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === "added") {
+            console.log("added");
+            const candidate = new RTCIceCandidate(change.doc.data());
+            pc.addIceCandidate(candidate);
+          }
+        });
+      });
+      // if (hangupButtonRef.current) hangupButtonRef.current.disabled = false;
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   const handleAnswerButtonClick = async () => {
     const callId = callInputRef.current?.value;
     if (!callId) return;
 
-    const callDoc = doc(database, "calls", callId);
-    const answerCandidates = collection(callDoc, "answerCandidates");
-    const offerCandidates = collection(callDoc, "offerCandidates");
+    const callDocRef = doc(database, "calls", callId);
+    const answerCandidates = collection(callDocRef, "answerCandidates");
+    const offerCandidates = collection(callDocRef, "offerCandidates");
 
     pc.onicecandidate = async (event) => {
       if (event.candidate) {
@@ -145,7 +161,7 @@ function App() {
       }
     };
 
-    const callData = (await getDoc(callDoc)).data();
+    const callData = (await getDoc(callDocRef)).data();
     if (!callData) return;
 
     const offerDescription = callData.offer;
@@ -159,7 +175,7 @@ function App() {
       sdp: answerDescription.sdp,
     };
 
-    await updateDoc(callDoc, { answer });
+    await updateDoc(callDocRef, { answer });
 
     onSnapshot(offerCandidates, (snapshot) => {
       snapshot.docChanges().forEach((change) => {
@@ -172,13 +188,34 @@ function App() {
     });
   };
 
+  const handleHangup = () => {
+    pc.close();
+
+    if (localStream) localStream.getTracks().forEach((track) => track.stop());
+
+    if (remoteStream) remoteStream.getTracks().forEach((track) => track.stop());
+
+    if (webcamVideoRef.current) webcamVideoRef.current.srcObject = null;
+    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+    if (webcamButtonRef.current) webcamButtonRef.current.disabled = false;
+    if (callButtonRef.current) webcamButtonRef.current.disabled = false;
+    if (hangupButtonRef.current) hangupButtonRef.current.disabled = false;
+
+    if (callInputRef.current) callInputRef.current.value = "";
+  };
+
   return (
     <div>
       <h2>1. Start your Webcam</h2>
       <div className="videos">
         <span>
           <h3>Local Stream</h3>
-          <video ref={webcamVideoRef} autoPlay playsInline></video>
+          <video
+            id="videoElement"
+            ref={webcamVideoRef}
+            autoPlay
+            playsInline
+          ></video>
         </span>
         <span>
           <h3>Remote Stream</h3>
@@ -202,7 +239,7 @@ function App() {
       </button>
 
       <h2>4. Hangup</h2>
-      <button ref={hangupButtonRef} disabled>
+      <button ref={hangupButtonRef} onClick={handleHangup}>
         Hangup
       </button>
     </div>
