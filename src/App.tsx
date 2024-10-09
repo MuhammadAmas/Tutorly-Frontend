@@ -12,16 +12,15 @@ import {
   getFirestore,
 } from "firebase/firestore";
 import { useRef, useState } from "react";
-const dotenv = require('dotenv').config()
 
 const firebaseConfig = {
-  apiKey: dotenv.API_KEY,
-  authDomain: dotenv.AUTH_DOMAIN,
-  projectId: dotenv.PROJECT_ID,
-  storageBucket: dotenv.STORAGE_BUCKET,
-  messagingSenderId: dotenv.MESSAGING_SENDER_ID,
-  appId: dotenv.APP_ID,
-  measurementId: dotenv.MEASUREMENT_ID,
+  apiKey: "AIzaSyCxlTdpYHSUGobRD4_uPaxq4Jl31sYLqfM",
+  authDomain: "fyp-project-d5e70.firebaseapp.com",
+  projectId: "fyp-project-d5e70",
+  storageBucket: "fyp-project-d5e70.appspot.com",
+  messagingSenderId: "955314270626",
+  appId: "1:955314270626:web:0f18f7c1fe76b5570382fb",
+  measurementId: "G-53C9N19X96"
 };
 
 // Initialize Firebase
